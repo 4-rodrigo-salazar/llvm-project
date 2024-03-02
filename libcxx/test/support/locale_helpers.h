@@ -41,6 +41,24 @@ std::wstring convert_thousands_sep(std::wstring const& in, wchar_t sep) {
   return out;
 }
 
+#if defined(_WIN32)
+inline wchar_t get_locale_mon_thousands_sep(const char* locale) {
+  int original_status = _configthreadlocale(_ENABLE_PER_THREAD_LOCALE);
+  std::string original_locale(setlocale(LC_ALL, nullptr));
+
+  setlocale(LC_ALL, locale);
+  lconv* lc = localeconv();
+  const char* mon_thousands_sep = lc->mon_thousands_sep;
+  wchar_t wsep;
+  std::mbstate_t mb = {};
+  std::mbsrtowcs(&wsep, &mon_thousands_sep, 1, &mb);
+
+  setlocale(LC_ALL, original_locale.c_str());
+  _configthreadlocale(original_status);
+  return wsep;
+}
+#endif // _WIN32
+
 // GLIBC 2.27 and newer use U+202F NARROW NO-BREAK SPACE as a thousands separator.
 // This function converts the spaces in string inputs to U+202F if need
 // be. FreeBSD's locale data also uses U+202F, since 2018.
@@ -54,7 +72,10 @@ std::wstring convert_thousands_sep_fr_FR(std::wstring const& in) {
 #elif defined(__FreeBSD__)
   return convert_thousands_sep(in, L'\u202F');
 #elif defined(_WIN32)
-  return convert_thousands_sep(in, L'\u00A0');
+  // Windows has changed it's fr thousands sep between releases.
+  // Fetch the host's separator in order to know what to expect from the test results.
+  wchar_t expected_separator = get_locale_mon_thousands_sep(LOCALE_fr_FR_UTF_8);
+  return convert_thousands_sep(in, expected_separator);
 #else
   return in;
 #endif

@@ -27,6 +27,7 @@
 #include <cassert>
 
 #include "test_macros.h"
+#include "locale_helpers.h"
 #include "platform_support.h" // locale name macros
 
 class Fnf
@@ -115,7 +116,9 @@ int main(int, char**)
 #if defined(_CS_GNU_LIBC_VERSION)
     const wchar_t fr_sep = glibc_version_less_than("2.27") ? L' ' : L'\u202F';
 #elif defined(_WIN32)
-    const wchar_t fr_sep = L'\u00A0';
+    // Windows has changed it's fr thousands sep between releases.
+    // Fetch the host's separator in order to know what to expect from the test results.
+    const wchar_t fr_sep = LocaleHelpers::get_locale_mon_thousands_sep(LOCALE_fr_FR_UTF_8);
 #elif defined(_AIX)
     const wchar_t fr_sep = L'\u202F';
 #else
